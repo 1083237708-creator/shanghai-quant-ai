@@ -1,0 +1,11 @@
+streamlit>=1.32.0
+akshare>=1.14.0
+pandas>=2.0
+numpy
+plotly
+ta
+requests
+schedule
+joblib
+tqdm
+python-dotenv
