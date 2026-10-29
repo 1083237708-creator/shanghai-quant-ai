@@ -22,13 +22,13 @@ code_input = st.sidebar.text_input("个股代码（如600000）", "")
 auto_refresh = st.sidebar.checkbox("自动刷新(60秒)", False)
 
 st.title("上证全市场量化AI")
-st.caption(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | 缠论 + 江恩 + 道氏 + 量能 | 仅供学习研究")
+st.caption(datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " | 仅供学习研究")
 
 tab1, tab2, tab3 = st.tabs(["智能选股", "个股深度分析", "市场新闻"])
 
 with tab1:
     if run_btn:
-        with st.spinner("正在扫描全上证股票，请耐心等待（约1-3分钟）..."):
+        with st.spinner("正在扫描全上证股票，请耐心等待..."):
             try:
                 result = select_sh_stocks(
                     min_score=min_score,
@@ -43,54 +43,47 @@ with tab1:
                 st.error(f"选股出错: {e}")
                 st.session_state["select_result"] = pd.DataFrame()
 
-    if "select_result" in st.session_state and not st.session_state["select_result"].empty:
-        st.success(f"共选出 {len(st.session_state['select_result'])} 只股票")
-        st.dataframe(st.session_state["select_result"], use_container_width=True, height=500)
-        csv = st.session_state["select_result"].to_csv(index=False).encode("utf-8-sig")
-        st.download_button("下载选股结果 CSV", csv, "sh_select.csv", "text/csv")
+    if "select_result" in st.session_state:
+        df = st.session_state["select_result"]
+        if not df.empty:
+            st.success(f"共选出 {len(df)} 只股票")
+            st.dataframe(df, use_container_width=True)
+            csv = df.to_csv(index=False).encode("utf-8-sig")
+            st.download_button("下载CSV", csv, "select.csv", "text/csv")
+        else:
+            st.info("没有符合条件的股票，请放宽条件再试")
     else:
         st.info("请点击左侧「开始全上证选股」按钮")
 
 with tab2:
     if code_input:
-        with st.spinner(f"正在分析 {code_input}..."):
-            hist = get_stock_hist(code_input, period=period if period != "daily" else "daily")
-            if not hist.empty:
-                score = multi_factor_score(hist)
-
-                cols = st.columns(5)
-                cols[0].metric("综合评分", score["综合评分"])
-                cols[1].metric("动量", score["动量"])
-                cols[2].metric("形态", score["形态"])
-                cols[3].metric("趋势", score["趋势"])
-                cols[4].metric("量价", score["量价"])
-
-                st.write("**信号：**", " | ".join(score["信号"]))
-                st.write("**道氏判断：**", score.get("道氏", ""))
-
-                fig = go.Figure(data=[go.Candlestick(
-                    x=hist["date"],
-                    open=hist["open"],
-                    high=hist["high"],
-                    low=hist["low"],
-                    close=hist["close"],
-                    name=code_input
-                )])
-                fig.update_layout(height=500, xaxis_rangeslider_visible=False, template="plotly_dark")
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.error("无法获取该股票数据，请检查代码是否正确")
+        hist = get_stock_hist(code_input)
+        if not hist.empty:
+            score = multi_factor_score(hist)
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("综合评分", score["综合评分"])
+            c2.metric("动量", score["动量"])
+            c3.metric("形态", score["形态"])
+            c4.metric("趋势", score["趋势"])
+            c5.metric("量价", score["量价"])
+            st.write("信号：", " | ".join(score["信号"]))
+            
+            fig = go.Figure(data=[go.Candlestick(
+                x=hist["date"], open=hist["open"], high=hist["high"],
+                low=hist["low"], close=hist["close"]
+            )])
+            fig.update_layout(height=450, xaxis_rangeslider_visible=False)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.error("获取数据失败")
     else:
-        st.write("请在左侧输入股票代码进行个股分析")
+        st.write("请在左侧输入股票代码")
 
 with tab3:
-    st.subheader("财联社最新电报")
-    news = get_cls_news(20)
-    if news:
-        for n in news:
-            st.markdown(f"**{n['time']}**  {n['title']}")
-    else:
-        st.write("暂时获取不到新闻")
+    st.subheader("财联社新闻")
+    news_list = get_cls_news(15)
+    for n in news_list:
+        st.markdown(f"**{n['time']}** {n['title']}")
 
 if auto_refresh:
     time.sleep(60)
