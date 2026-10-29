@@ -10,7 +10,6 @@ from selector import select_sh_stocks
 
 st.set_page_config(page_title="上证全市场量化AI", layout="wide", initial_sidebar_state="expanded")
 
-# ========== 左侧条件栏 ==========
 st.sidebar.title("条件设置")
 min_score = st.sidebar.slider("最低综合评分", 50, 90, 68)
 min_mktcap = st.sidebar.number_input("最低市值(亿)", 5.0, 1000.0, 25.0)
@@ -43,7 +42,7 @@ with tab1:
             except Exception as e:
                 st.error(f"选股出错: {e}")
                 st.session_state["select_result"] = pd.DataFrame()
-    
+
     if "select_result" in st.session_state and not st.session_state["select_result"].empty:
         st.success(f"共选出 {len(st.session_state['select_result'])} 只股票")
         st.dataframe(st.session_state["select_result"], use_container_width=True, height=500)
@@ -58,18 +57,17 @@ with tab2:
             hist = get_stock_hist(code_input, period=period if period != "daily" else "daily")
             if not hist.empty:
                 score = multi_factor_score(hist)
-                
+
                 cols = st.columns(5)
                 cols[0].metric("综合评分", score["综合评分"])
                 cols[1].metric("动量", score["动量"])
                 cols[2].metric("形态", score["形态"])
                 cols[3].metric("趋势", score["趋势"])
                 cols[4].metric("量价", score["量价"])
-                
+
                 st.write("**信号：**", " | ".join(score["信号"]))
                 st.write("**道氏判断：**", score.get("道氏", ""))
-                
-                # K线图
+
                 fig = go.Figure(data=[go.Candlestick(
                     x=hist["date"],
                     open=hist["open"],
